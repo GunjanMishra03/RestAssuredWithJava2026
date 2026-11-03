@@ -1,0 +1,46 @@
+name: API tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target Maven profile
+        required: true
+        default: qa
+        type: choice
+        options:
+          - dev
+          - qa
+          - uat
+          - prod
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - name: Run API tests
+        run: mvn --batch-mode clean test -P${{ inputs.environment || 'qa' }}
+      - name: Publish TestNG results
+        if: always()
+        uses: dorny/test-reporter@v1
+        with:
+          name: TestNG results
+          path: target/surefire-reports/TEST-*.xml
+          reporter: java-junit
+      - name: Upload reports and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-test-reports
+          path: |
+            target/extent-reports/
+            target/logs/
+            target/surefire-reports/
